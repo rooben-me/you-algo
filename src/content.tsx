@@ -2,9 +2,11 @@ import cssText from "data-text:~style.css"
 import type { PlasmoCSConfig } from "plasmo"
 import React, { useState } from "react"
 
+import { Marker } from "./content/marker"
+
 // Configuration for PlasmoCS
 export const config: PlasmoCSConfig = {
-  matches: ["<all_urls>"]
+  matches: ["https://www.youtube.com/"]
 }
 
 // Function to create a style element with the CSS text
@@ -15,7 +17,10 @@ export const getStyle = () => {
 }
 
 const PlasmoOverlay = () => {
-  return <div className="bg-red-500 top-5 fixed right-5">red</div>
+  const currentDOM = document.getElementById("contents")
+  console.log(currentDOM)
+
+  return <Marker />
 }
 
 export default PlasmoOverlay
