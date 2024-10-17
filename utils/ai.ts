@@ -6,23 +6,24 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 })
 
-export async function ai() {
+export async function ai(youtube_video_info: string) {
   const completion = await openai.beta.chat.completions.parse({
-    model: "llama-3.1-70b-versatile",
+    model: "gemma2-9b-it",
     messages: [
       {
         role: "system",
-        content: `Extract the event information. using this json schema below :
+        content: `Based on the user information and liking your job is it give a relavant score and some info on why you it suits you to the current youtube video based on the meta data using this json schema below :
           z.object({
-            name: z.string(),
-            date: z.string(),
-            participants: z.array(z.string())
+            relavant_score: z.number(),
+            info: z.string(),
           })
+
+          USER_INFO : "ruban likes ai topic and music , and also he likes tamil movies and comedy"
           `
       },
       {
         role: "user",
-        content: "Alice and Bob are going to a science fair on Friday."
+        content: `${youtube_video_info}`
       }
     ],
     response_format: { type: "json_object" }

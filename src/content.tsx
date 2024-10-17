@@ -1,6 +1,7 @@
 import cssText from "data-text:~style.css"
 import type { PlasmoCSConfig } from "plasmo"
 import React, { useEffect, useState } from "react"
+import { ai } from "utils/ai"
 
 import { Marker } from "./content/marker"
 
@@ -43,17 +44,21 @@ const PlasmoOverlay = () => {
       // Check if the number of video items has changed (indicating DOM update)
       if (videoItems.length !== prevVideoItemCount) {
         const newVideoData = videoItems.map((element) => {
+          const videoInfo = extractVideoInfo(element)
+
+          if (!videoInfo.title) return
+
           const existingVideo = videoData.find((vd) => vd.element === element)
 
           if (!existingVideo) {
-            const videoInfo = extractVideoInfo(element)
-            const relevanceScore = getRelevanceScore(videoInfo)
+            const { relevanceScore, info } = getRelevanceScore(videoInfo)
             const scoreNumber = Number(relevanceScore)
             const removed = scoreNumber < 30
 
             return {
               element,
               videoInfo,
+              aiInfo: info,
               relevanceScore: scoreNumber,
               removed // Set removed status
             }
@@ -61,6 +66,8 @@ const PlasmoOverlay = () => {
             return existingVideo // Reuse if its existsing
           }
         })
+
+        console.log(videoData, "videodata")
 
         setVideoData(newVideoData)
         setPrevVideoItemCount(videoItems.length)
@@ -88,10 +95,20 @@ const PlasmoOverlay = () => {
     channel: string
     views: string
     timeAgo: string
-  }): number {
-    // Send videoInfo to your AI service and get a relevance score
-    // Example:
-    return Math.random() * 40
+  }): { relevanceScore: number; info: string } {
+    const { title, channel, timeAgo, views } = videoInfo
+
+    const youtube_video_info = `title : ${title}, channel : ${channel}, timeAgo : ${timeAgo}, views: ${views}`
+
+    const response = ai(youtube_video_info)
+    // @ts-ignore
+    const relevanceScore = response?.relavant_score * 100
+    // @ts-ignore
+    const info = response?.info
+
+    console.log(youtube_video_info, "youtube_video_info")
+
+    return { relevanceScore, info }
   }
 
   function extractVideoInfo(element: Element) {
