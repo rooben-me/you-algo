@@ -30,37 +30,48 @@ const PlasmoOverlay = () => {
     }[]
   >([])
 
+  console.log(videoData, "videoData")
+
   useEffect(() => {
-    const observer = new MutationObserver((mutations) => {
+    const intervalId = setInterval(() => {
       const videoItems = Array.from(
         document.querySelectorAll("ytd-rich-item-renderer")
       ).filter((element) => {
-        // Filter out shorts
         return !element.closest("ytd-rich-section-renderer")
       })
 
-      const newVideoData = Array.from(videoItems).map((element) => {
-        const videoInfo = extractVideoInfo(element)
-        const relevanceScore = getRelevanceScore(videoInfo)
+      const processedVideos: typeof videoData = []
 
-        return {
-          element,
-          videoInfo,
-          relevanceScore
+      for (const element of videoItems) {
+        const existingVideo = videoData.find((vd) => vd.element === element)
+
+        if (!existingVideo) {
+          // Only process new video elements
+          const videoInfo = extractVideoInfo(element)
+          const relevanceScore = getRelevanceScore(videoInfo)
+          const scoreNumber = Number(relevanceScore)
+
+          if (scoreNumber < 30) {
+            element.style.border = "2px solid red"
+          } else {
+            element.style.border = "2px solid green"
+          }
+
+          processedVideos.push({
+            element,
+            videoInfo,
+            relevanceScore: scoreNumber
+          })
         }
-      })
+      }
+      // Only update state if new videos were processed.
+      if (processedVideos.length > 0) {
+        setVideoData((prevData) => [...prevData, ...processedVideos])
+      }
+    }, 500) // Check every 500ms - adjust as needed
 
-      console.log(newVideoData, "new vidoe data")
-      setVideoData(newVideoData)
-    })
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    })
-
-    return () => observer.disconnect()
-  }, [])
+    return () => clearInterval(intervalId)
+  }, [videoData])
 
   // Mock function - replace with your actual AI call
   function getRelevanceScore(videoInfo: {
@@ -71,7 +82,7 @@ const PlasmoOverlay = () => {
   }): number {
     // Send videoInfo to your AI service and get a relevance score
     // Example:
-    return Math.random() * 100
+    return Math.random() * 40
   }
 
   function extractVideoInfo(element: Element) {
