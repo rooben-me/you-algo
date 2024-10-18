@@ -1,8 +1,10 @@
 import cssText from "data-text:~style.css"
 import type { PlasmoCSConfig } from "plasmo"
 import React, { useEffect, useState } from "react"
+import ReactDOM from "react-dom"
 import { ai } from "utils/ai"
 
+import AIInfoButton from "./content/AIInfoButton"
 import { Marker } from "./content/marker"
 
 // Configuration for PlasmoCS
@@ -33,13 +35,12 @@ const PlasmoOverlay = () => {
     }[]
   >([])
   const [prevVideoItemCount, setPrevVideoItemCount] = useState(0)
-  const [processing, setProcessing] = useState(false) // Add processing state
+  const [processing, setProcessing] = useState(false)
 
   console.log(videoData, "videoData")
 
   useEffect(() => {
     const intervalId = setInterval(async () => {
-      // Make async
       const videoItems = Array.from(
         document.querySelectorAll("ytd-rich-item-renderer")
       ).filter((element) => {
@@ -105,40 +106,54 @@ const PlasmoOverlay = () => {
 
   useEffect(() => {
     videoData.forEach((item) => {
-      if (item.removed && item.element.parentNode) {
-        // Hide the content
-        item.element.style.border = "2px solid red"
-        //  item.element.style.display = "none"
-      } else if (!item.removed && item.element) {
-        item.element.style.border = "2px solid green"
-      }
-    })
-  }, [videoData])
-
-  useEffect(() => {
-    videoData.forEach((item) => {
       if (item.element) {
         const avatarContainer = item.element.querySelector("#avatar-container")
         if (avatarContainer) {
-          const aiInfoButton = document.createElement("div")
-          aiInfoButton.className = "ai-info-button"
-          aiInfoButton.innerHTML = "AI"
+          // Create a new container for the AI button
+          let aiButtonContainer = avatarContainer.querySelector(
+            ".ai-button-container"
+          )
+          if (!aiButtonContainer) {
+            aiButtonContainer = document.createElement("div")
+            aiButtonContainer.className = "ai-button-container relative"
+            avatarContainer.appendChild(aiButtonContainer)
+          }
 
-          const aiInfoTooltip = document.createElement("div")
-          aiInfoTooltip.className = "ai-info-tooltip"
-          aiInfoTooltip.textContent = item.aiInfo || "No AI info available"
-
-          aiInfoButton.appendChild(aiInfoTooltip)
-          avatarContainer.appendChild(aiInfoButton)
+          // Render AIInfoButton in the new container
+          ReactDOM.render(
+            <AIInfoButton aiInfo={item.aiInfo} />,
+            aiButtonContainer
+          )
         }
 
         if (item.removed) {
+          // @ts-ignore
           item.element.style.border = "2px solid red"
         } else {
+          // @ts-ignore
           item.element.style.border = "2px solid green"
         }
       }
     })
+
+    // Cleanup function to unmount React components
+    return () => {
+      videoData.forEach((item) => {
+        if (item.element) {
+          const avatarContainer =
+            item.element.querySelector("#avatar-container")
+          if (avatarContainer) {
+            const aiButtonContainer = avatarContainer.querySelector(
+              ".ai-button-container"
+            )
+            if (aiButtonContainer) {
+              ReactDOM.unmountComponentAtNode(aiButtonContainer)
+              aiButtonContainer.remove()
+            }
+          }
+        }
+      })
+    }
   }, [videoData])
 
   function extractVideoInfo(element: Element) {
