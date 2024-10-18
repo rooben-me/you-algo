@@ -9,7 +9,7 @@ import { Marker } from "./content/marker"
 
 // Configuration for PlasmoCS
 export const config: PlasmoCSConfig = {
-  matches: ["https://www.youtube.com/"]
+  matches: ["https://www.youtube.com/*"]
 }
 
 // Function to create a style element with the CSS text
@@ -107,12 +107,13 @@ const PlasmoOverlay = () => {
   useEffect(() => {
     videoData.forEach((item) => {
       if (item.element) {
-        const avatarContainer = item.element.querySelector("#avatar-container")
+        const avatarContainer = item.element.querySelector("#dismissible")
         if (avatarContainer) {
           // Create a new container for the AI button
           let aiButtonContainer = avatarContainer.querySelector(
             ".ai-button-container"
           )
+
           if (!aiButtonContainer) {
             aiButtonContainer = document.createElement("div")
             aiButtonContainer.className = "ai-button-container relative"
@@ -121,18 +122,18 @@ const PlasmoOverlay = () => {
 
           // Render AIInfoButton in the new container
           ReactDOM.render(
-            <AIInfoButton aiInfo={item.aiInfo} />,
+            <AIInfoButton aiInfo={item.aiInfo} removed={item.removed} />,
             aiButtonContainer
           )
         }
 
-        if (item.removed) {
-          // @ts-ignore
-          item.element.style.border = "2px solid red"
-        } else {
-          // @ts-ignore
-          item.element.style.border = "2px solid green"
-        }
+        // if (item.removed) {
+        //   // @ts-ignore
+        //   item.element.style.border = "2px solid red"
+        // } else {
+        //   // @ts-ignore
+        //   item.element.style.border = "2px solid green"
+        // }
       }
     })
 

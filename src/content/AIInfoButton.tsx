@@ -1,16 +1,16 @@
 import React, { useState } from "react"
 
-const AIInfoButton = ({ aiInfo }) => {
+const AIInfoButton = ({ aiInfo, removed }) => {
   return (
     <div
       style={{
-        backgroundColor: "#1f2937", // Tailwind's gray-800
-        color: "white",
+        backgroundColor: removed ? "#450a0a" : "#1a2e05",
+        color: removed ? "#fecaca" : "#d9f99d",
         padding: "8px",
-        borderRadius: "4px",
-        fontSize: "12px",
-        width: "200px",
-        textAlign: "center"
+        borderRadius: "0px 0px 8px 8px",
+        fontSize: "14px",
+        marginTop: "8px",
+        textAlign: "left"
       }}>
       {aiInfo || "No AI info available"}
     </div>
