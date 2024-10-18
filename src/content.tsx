@@ -27,55 +27,81 @@ const PlasmoOverlay = () => {
         views: string
         timeAgo: string
       }
+      aiInfo?: string // Store AI info
       relevanceScore?: number
-      removed?: boolean // Track removal status
+      removed?: boolean
     }[]
   >([])
   const [prevVideoItemCount, setPrevVideoItemCount] = useState(0)
+  const [processing, setProcessing] = useState(false) // Add processing state
+
+  console.log(videoData, "videoData")
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
+    const intervalId = setInterval(async () => {
+      // Make async
       const videoItems = Array.from(
         document.querySelectorAll("ytd-rich-item-renderer")
       ).filter((element) => {
         return !element.closest("ytd-rich-section-renderer")
       })
 
-      // Check if the number of video items has changed (indicating DOM update)
-      if (videoItems.length !== prevVideoItemCount) {
-        const newVideoData = videoItems.map((element) => {
-          const videoInfo = extractVideoInfo(element)
+      if (
+        videoItems.length !== prevVideoItemCount &&
+        !processing // Prevent multiple calls
+      ) {
+        setProcessing(true) // Set processing flag
 
-          if (!videoInfo.title) return
+        const newVideoInfos = videoItems
+          .map((element) => {
+            const videoInfo = extractVideoInfo(element)
+            if (videoInfo.title === null) {
+              return null
+            }
+            return videoInfo
+          })
+          .filter(Boolean) // Filter out null values (videos without titles)
 
-          const existingVideo = videoData.find((vd) => vd.element === element)
+        try {
+          // Batch AI call:
 
-          if (!existingVideo) {
-            const { relevanceScore, info } = getRelevanceScore(videoInfo)
-            const scoreNumber = Number(relevanceScore)
-            const removed = scoreNumber < 30
+          const aiResponses = await ai(newVideoInfos)
+
+          const newVideoData = newVideoInfos.map((videoInfo, index) => {
+            // Handle potential index mismatch if aiResponses is shorter
+            const aiResponse = aiResponses[index] || {
+              relevance_score: 0,
+              info: ""
+            }
+
+            console.log(aiResponse)
+
+            // Parse the relevance_score as a float and multiply by 100
+            const relevanceScore =
+              parseFloat(aiResponse?.relevance_score) * 100 || 0
+            const removed = relevanceScore < 30
 
             return {
-              element,
+              element: videoItems[index], // Get element from videoItems
               videoInfo,
-              aiInfo: info,
-              relevanceScore: scoreNumber,
-              removed // Set removed status
+              aiInfo: aiResponse.info,
+              relevanceScore,
+              removed
             }
-          } else {
-            return existingVideo // Reuse if its existsing
-          }
-        })
+          })
 
-        console.log(videoData, "videodata")
-
-        setVideoData(newVideoData)
-        setPrevVideoItemCount(videoItems.length)
+          setVideoData(newVideoData)
+        } catch (error) {
+          console.error("Error during AI processing:", error)
+        } finally {
+          setProcessing(false) // Reset processing flag in finally
+          setPrevVideoItemCount(videoItems.length)
+        }
       }
     }, 250)
 
     return () => clearInterval(intervalId)
-  }, [videoData, prevVideoItemCount])
+  }, [videoData, prevVideoItemCount, processing]) // Add processing to dependencies
 
   useEffect(() => {
     videoData.forEach((item) => {
@@ -89,27 +115,31 @@ const PlasmoOverlay = () => {
     })
   }, [videoData])
 
-  // Mock function - replace with your actual AI call
-  function getRelevanceScore(videoInfo: {
-    title: string
-    channel: string
-    views: string
-    timeAgo: string
-  }): { relevanceScore: number; info: string } {
-    const { title, channel, timeAgo, views } = videoInfo
+  useEffect(() => {
+    videoData.forEach((item) => {
+      if (item.element) {
+        const avatarContainer = item.element.querySelector("#avatar-container")
+        if (avatarContainer) {
+          const aiInfoButton = document.createElement("div")
+          aiInfoButton.className = "ai-info-button"
+          aiInfoButton.innerHTML = "AI"
 
-    const youtube_video_info = `title : ${title}, channel : ${channel}, timeAgo : ${timeAgo}, views: ${views}`
+          const aiInfoTooltip = document.createElement("div")
+          aiInfoTooltip.className = "ai-info-tooltip"
+          aiInfoTooltip.textContent = item.aiInfo || "No AI info available"
 
-    const response = ai(youtube_video_info)
-    // @ts-ignore
-    const relevanceScore = response?.relavant_score * 100
-    // @ts-ignore
-    const info = response?.info
+          aiInfoButton.appendChild(aiInfoTooltip)
+          avatarContainer.appendChild(aiInfoButton)
+        }
 
-    console.log(youtube_video_info, "youtube_video_info")
-
-    return { relevanceScore, info }
-  }
+        if (item.removed) {
+          item.element.style.border = "2px solid red"
+        } else {
+          item.element.style.border = "2px solid green"
+        }
+      }
+    })
+  }, [videoData])
 
   function extractVideoInfo(element: Element) {
     const titleElement = element.querySelector("#video-title")

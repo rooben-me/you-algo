@@ -6,34 +6,59 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true
 })
 
-export async function ai(youtube_video_info: string) {
-  const completion = await openai.beta.chat.completions.parse({
-    model: "gemma2-9b-it",
-    messages: [
-      {
-        role: "system",
-        content: `Based on the user information and liking your job is it give a relavant score and some info on why you it suits you to the current youtube video based on the meta data using this json schema below :
-          z.object({
-            relavant_score: z.number(),
-            info: z.string(),
-          })
+export async function ai(
+  youtube_video_info: {
+    title: string
+    channel: string
+    views: string
+    timeAgo: string
+  }[]
+) {
+  const youtube_video_infos_string = youtube_video_info
+    .map((videoInfo) => {
+      const { title, channel, timeAgo, views } = videoInfo
 
-          USER_INFO : "ruban likes ai topic and music , and also he likes tamil movies and comedy"
+      const youtube_video_info_string = `title : ${title}, channel : ${channel}, timeAgo : ${timeAgo}, views: ${views}`
+
+      return youtube_video_info_string
+    })
+    .join("\n")
+
+  try {
+    const completion = await openai.beta.chat.completions.parse({
+      model: "llama-3.1-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `You are given an array of YouTube video metadata. Your job is to analyze each video based on the user's preferences and return a JSON object containing an array of relevance scores and information.  Use the following JSON schema:
+
+            {
+              "videos": [
+                {
+                  "relevance_score": <number between 0 and 1>,
+                  "info": <string explaining relevance>
+                },
+                 // ... more video objects
+              ]
+            }
+
+            USER_INFO : "ruban likes ai topic and music , and also he likes tamil movies and comedy"
           `
-      },
-      {
-        role: "user",
-        content: `${youtube_video_info}`
-      }
-    ],
-    response_format: { type: "json_object" }
-  })
+        },
+        {
+          role: "user",
+          content: `Here's the YouTube video metadata:\n${youtube_video_infos_string}`
+        }
+      ],
+      response_format: { type: "json_object" }
+    })
 
-  const content = completion.choices[0].message.content
+    const content = completion.choices[0].message.content
+    const response = JSON.parse(content)
 
-  const response = JSON.parse(content)
-
-  console.log(response, "event")
-
-  return response
+    return response.videos // Return the "videos" array
+  } catch (error) {
+    console.error("Error during AI processing:", error)
+    return [] // Return empty array in case of error
+  }
 }
